@@ -1,87 +1,31 @@
 // app.js
+
 // Initialize Supabase
 const supabaseUrl = "https://afvfxcecqhgtvftdlhhb.supabase.co"; // GANTI DENGAN URL ANDA
 const supabaseKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmdmZ4Y2VjcWhndHZmdGRsaGhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0Mjg1MjIsImV4cCI6MjA3OTAwNDUyMn0.ySGRy4hVxokr-Pl_gMSf9nvzBImtRfVB4ZYpZbCMJDQ"; // GANTI DENGAN KUNCI ANDA
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// --- Monthly Balance Elements (Display Only) ---
-const currentBalanceEl = document.getElementById("currentBalance");
-const balancePeriodEl = document.getElementById("balancePeriod");
-
-// --- Salary Elements ---
-const salaryDisplay = document.getElementById("salaryDisplay");
-const salaryEdit = document.getElementById("salaryEdit");
-const editSalaryBtn = document.getElementById("editSalaryBtn");
-const salaryTableBody = document.getElementById("salaryTableBody");
-const addSalaryBtn = document.getElementById("addSalaryBtn");
-const salaryModal = new bootstrap.Modal(document.getElementById("salaryModal"));
-const salaryForm = document.getElementById("salaryForm");
-const saveSalaryBtn = document.getElementById("saveSalaryBtn");
-
-// --- Expense Elements ---
-const expensesDisplay = document.getElementById("expensesDisplay");
-const expensesEdit = document.getElementById("expensesEdit");
-const editExpensesBtn = document.getElementById("editExpensesBtn");
-const expensesTableBody = document.getElementById("expensesTableBody");
-const addExpenseBtn = document.getElementById("addExpenseBtn");
-const expenseModal = new bootstrap.Modal(
-  document.getElementById("expenseModal")
-);
-const expenseForm = document.getElementById("expenseForm");
-const saveExpenseBtn = document.getElementById("saveExpenseBtn");
-const toggleExpensesBtn = document.getElementById("toggleExpensesBtn");
-
-// --- Subscription Elements ---
-const subscriptionsDisplay = document.getElementById("subscriptionsDisplay");
-const subscriptionsEdit = document.getElementById("subscriptionsEdit");
-const editSubscriptionsBtn = document.getElementById("editSubscriptionsBtn");
-const subscriptionsTableBody = document.getElementById(
-  "subscriptionsTableBody"
-);
-const addSubscriptionBtn = document.getElementById("addSubscriptionBtn");
-const subscriptionModal = new bootstrap.Modal(
-  document.getElementById("subscriptionModal")
-);
-const subscriptionForm = document.getElementById("subscriptionForm");
-const saveSubscriptionBtn = document.getElementById("saveSubscriptionBtn");
-
-// --- Installment Elements ---
-const installmentsDisplay = document.getElementById("installmentsDisplay");
-const installmentsEdit = document.getElementById("installmentsEdit");
-const editInstallmentsBtn = document.getElementById("editInstallmentsBtn");
-const installmentsTableBody = document.getElementById("installmentsTableBody");
-const addInstallmentBtn = document.getElementById("addInstallmentBtn");
-const installmentModal = new bootstrap.Modal(
-  document.getElementById("installmentModal")
-);
-const installmentForm = document.getElementById("installmentForm");
-const saveInstallmentBtn = document.getElementById("saveInstallmentBtn");
-
-// --- Other Elements ---
-const toastEl = document.getElementById("toast");
-const toast = new bootstrap.Toast(toastEl);
-const toastMessage = document.getElementById("toastMessage");
-const expenseCategory = document.getElementById("expenseCategory");
-const subscriptionFields = document.getElementById("subscriptionFields");
-const installmentFields = document.getElementById("installmentFields");
-
 // --- STATE VARIABLES ---
 let isShowingAllExpenses = false;
+let isShowingAllSubscriptions = false;
+let isShowingAllInstallments = false;
+let isShowingAllCreditCard = false;
+let isShowingAllDebitCard = false;
+
+// --- MODAL INITIALIZATION (Will be done in DOMContentLoaded) ---
+let salaryModal,
+  expenseModal,
+  subscriptionModal,
+  installmentModal,
+  creditCardModal,
+  debitCardModal;
 
 // --- HELPER FUNCTIONS ---
-expenseCategory.addEventListener("change", () => {
-  const category = expenseCategory.value;
-  subscriptionFields.classList.add("d-none");
-  installmentFields.classList.add("d-none");
-  if (category === "Subscription") {
-    subscriptionFields.classList.remove("d-none");
-  } else if (category === "Paylater/Installment") {
-    installmentFields.classList.remove("d-none");
-  }
-});
-
 function showToast(message, type = "success") {
+  const toastEl = document.getElementById("toast");
+  const toast = new bootstrap.Toast(toastEl);
+  const toastMessage = document.getElementById("toastMessage");
   toastMessage.textContent = message;
   toastEl.className = `toast align-items-center text-white bg-${
     type === "success" ? "success" : "danger"
@@ -119,8 +63,9 @@ async function loadMonthlyBalance() {
     if (salaryError) throw salaryError;
 
     if (!salaries || salaries.length === 0) {
-      currentBalanceEl.textContent = formatCurrency(0);
-      balancePeriodEl.textContent = "Tempoh: Tiada data gaji ditemui.";
+      document.getElementById("currentBalance").textContent = formatCurrency(0);
+      document.getElementById("balancePeriod").textContent =
+        "Tempoh: Tiada data gaji ditemui.";
       return;
     }
 
@@ -141,15 +86,19 @@ async function loadMonthlyBalance() {
     );
     const balance = salaryAmount - totalExpenses;
 
-    currentBalanceEl.textContent = formatCurrency(balance);
-    balancePeriodEl.textContent = `Tempoh: ${formatDate(
-      start_date
-    )} - ${formatDate(end_date)}`;
+    document.getElementById("currentBalance").textContent =
+      formatCurrency(balance);
+    document.getElementById(
+      "balancePeriod"
+    ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
+      end_date
+    )}`;
   } catch (error) {
     console.error("Error calculating monthly balance:", error);
     showToast("Gagal mengira baki bulanan", "error");
-    currentBalanceEl.textContent = "Ralat";
-    balancePeriodEl.textContent = "Tidak dapat mengira";
+    document.getElementById("currentBalance").textContent = "Ralat";
+    document.getElementById("balancePeriod").textContent =
+      "Tidak dapat mengira";
   }
 }
 
@@ -172,6 +121,7 @@ async function loadSalaries() {
         currentSalary.start_date
       )} - ${formatDate(currentSalary.end_date)}`;
     }
+    const salaryTableBody = document.getElementById("salaryTableBody");
     salaryTableBody.innerHTML = "";
     data.forEach((salary) => {
       const row = document.createElement("tr");
@@ -217,7 +167,7 @@ async function saveSalary() {
     showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
   } finally {
     salaryModal.hide();
-    salaryForm.reset();
+    document.getElementById("salaryForm").reset();
     loadSalaries();
     loadMonthlyBalance();
   }
@@ -261,41 +211,51 @@ async function deleteSalary(id) {
 // --- EXPENSE FUNCTIONS ---
 async function loadExpenses() {
   try {
-    const { data, error } = await supabase
+    const { data: salaries, error: salaryError } = await supabase
+      .from("salaries")
+      .select("start_date, end_date")
+      .order("month", { ascending: false })
+      .limit(1);
+    if (salaryError || !salaries || salaries.length === 0) {
+      document.getElementById("currentExpenses").textContent =
+        formatCurrency(0);
+      document.getElementById("expensesPeriod").textContent =
+        "Tempoh: Tiada data gaji.";
+      document.getElementById("expensesTableBody").innerHTML = "";
+      document.getElementById("toggleExpensesBtn").style.display = "none";
+      return;
+    }
+    const { start_date, end_date } = salaries[0];
+
+    const { data: allExpenses, error: expenseError } = await supabase
       .from("expenses")
       .select("*")
       .order("date", { ascending: false });
-    if (error) throw error;
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const currentMonthExpenses = data.filter((expense) => {
-      const expenseDate = new Date(expense.date);
-      return (
-        expenseDate.getMonth() + 1 === currentMonth &&
-        expenseDate.getFullYear() === currentYear
-      );
-    });
-    const totalExpenses = currentMonthExpenses.reduce(
+    if (expenseError) throw expenseError;
+
+    const currentPeriodExpenses = allExpenses.filter(
+      (expense) =>
+        new Date(expense.date) >= new Date(start_date) &&
+        new Date(expense.date) <= new Date(end_date)
+    );
+    const totalExpenses = currentPeriodExpenses.reduce(
       (sum, expense) => sum + expense.amount,
       0
     );
+
     document.getElementById("currentExpenses").textContent =
       formatCurrency(totalExpenses);
     document.getElementById(
       "expensesPeriod"
-    ).textContent = `Tempoh: 1 ${currentDate.toLocaleDateString("ms-MY", {
-      month: "long",
-    })} - ${new Date(
-      currentYear,
-      currentMonth,
-      0
-    ).getDate()} ${currentDate.toLocaleDateString("ms-MY", {
-      month: "long",
-    })} ${currentYear}`;
+    ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
+      end_date
+    )}`;
 
+    const expensesTableBody = document.getElementById("expensesTableBody");
     expensesTableBody.innerHTML = "";
-    const itemsToShow = isShowingAllExpenses ? data : data.slice(0, 5);
+    const itemsToShow = isShowingAllExpenses
+      ? allExpenses
+      : allExpenses.slice(0, 5);
     itemsToShow.forEach((expense) => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${formatDate(expense.date)}</td><td>${
@@ -314,17 +274,13 @@ async function loadExpenses() {
       expensesTableBody.appendChild(row);
     });
 
-    // ... kod sebelum ini ...
     const toggleBtn = document.getElementById("toggleExpensesBtn");
-
-    // --- UNTUK UJIAN: Buat butang sentiasa kelihatan ---
-    toggleBtn.style.display = "inline-block";
-    if (data.length > 5) {
+    if (allExpenses.length > 5) {
+      toggleBtn.style.display = "inline-block";
       toggleBtn.textContent = isShowingAllExpenses ? "Show Less" : "Show All";
     } else {
-      toggleBtn.textContent = "Show All"; // Tukar teks juga
+      toggleBtn.style.display = "none";
     }
-    // ... kod selepas ini ...
   } catch (error) {
     console.error("Error loading expenses:", error);
     showToast("Gagal memuatkan data perbelanjaan", "error");
@@ -368,6 +324,7 @@ async function saveExpense() {
     updateData.end_date = document.getElementById("installmentEndDate").value;
   }
   try {
+    console.log("Saving expense with data:", updateData, "ID:", id);
     let error;
     if (id) {
       ({ error } = await supabase
@@ -384,7 +341,7 @@ async function saveExpense() {
     showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
   } finally {
     expenseModal.hide();
-    expenseForm.reset();
+    document.getElementById("expenseForm").reset();
     loadExpenses();
     loadSubscriptions();
     loadInstallments();
@@ -405,7 +362,9 @@ async function editExpense(id) {
     document.getElementById("expenseDescription").value = data.description;
     document.getElementById("expenseAmount").value = data.amount;
     document.getElementById("expenseCategory").value = data.category;
-    expenseCategory.dispatchEvent(new Event("change"));
+    document
+      .getElementById("expenseCategory")
+      .dispatchEvent(new Event("change"));
     if (data.category === "Subscription") {
       document.getElementById("expenseStartDate").value = data.start_date || "";
       document.getElementById("expenseEndDate").value = data.end_date || "";
@@ -465,8 +424,12 @@ async function loadSubscriptions() {
     );
     document.getElementById("currentSubscriptions").textContent =
       formatCurrency(totalSubscriptions);
+    const subscriptionsTableBody = document.getElementById(
+      "subscriptionsTableBody"
+    );
     subscriptionsTableBody.innerHTML = "";
-    data.slice(0, 5).forEach((subscription) => {
+    const itemsToShow = isShowingAllSubscriptions ? data : data.slice(0, 5);
+    itemsToShow.forEach((subscription) => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${subscription.description}</td><td>${formatCurrency(
         subscription.amount
@@ -479,6 +442,15 @@ async function loadSubscriptions() {
       }"><i class="bi bi-trash"></i></button></td>`;
       subscriptionsTableBody.appendChild(row);
     });
+    const toggleBtn = document.getElementById("toggleSubscriptionsBtn");
+    if (data.length > 5) {
+      toggleBtn.style.display = "inline-block";
+      toggleBtn.textContent = isShowingAllSubscriptions
+        ? "Show Less"
+        : "Show All";
+    } else {
+      toggleBtn.style.display = "none";
+    }
   } catch (error) {
     console.error("Error loading subscriptions:", error);
     showToast("Gagal memuatkan data langganan", "error");
@@ -518,7 +490,7 @@ async function saveSubscription() {
     showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
   } finally {
     subscriptionModal.hide();
-    subscriptionForm.reset();
+    document.getElementById("subscriptionForm").reset();
     loadSubscriptions();
     loadExpenses();
     loadMonthlyBalance();
@@ -586,8 +558,12 @@ async function loadInstallments() {
     );
     document.getElementById("currentInstallments").textContent =
       formatCurrency(totalInstallments);
+    const installmentsTableBody = document.getElementById(
+      "installmentsTableBody"
+    );
     installmentsTableBody.innerHTML = "";
-    data.slice(0, 5).forEach((installment) => {
+    const itemsToShow = isShowingAllInstallments ? data : data.slice(0, 5);
+    itemsToShow.forEach((installment) => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${installment.description}</td><td>${formatCurrency(
         installment.amount
@@ -602,6 +578,15 @@ async function loadInstallments() {
       }"><i class="bi bi-trash"></i></button></td>`;
       installmentsTableBody.appendChild(row);
     });
+    const toggleBtn = document.getElementById("toggleInstallmentsBtn");
+    if (data.length > 5) {
+      toggleBtn.style.display = "inline-block";
+      toggleBtn.textContent = isShowingAllInstallments
+        ? "Show Less"
+        : "Show All";
+    } else {
+      toggleBtn.style.display = "none";
+    }
   } catch (error) {
     console.error("Error loading installments:", error);
     showToast("Gagal memuatkan data ansuran", "error");
@@ -641,7 +626,7 @@ async function saveInstallment() {
     showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
   } finally {
     installmentModal.hide();
-    installmentForm.reset();
+    document.getElementById("installmentForm").reset();
     loadInstallments();
     loadExpenses();
     loadMonthlyBalance();
@@ -686,85 +671,484 @@ async function deleteInstallment(id) {
   }
 }
 
+// --- CREDIT CARD BALANCE FUNCTIONS ---
+async function loadCreditCardBalances() {
+  try {
+    const { data: salaries, error: salaryError } = await supabase
+      .from("salaries")
+      .select("start_date, end_date")
+      .order("month", { ascending: false })
+      .limit(1);
+    if (salaryError || !salaries || salaries.length === 0) {
+      document.getElementById("currentCreditCard").textContent =
+        formatCurrency(0);
+      document.getElementById("creditCardPeriod").textContent =
+        "Tempoh: Tiada data gaji.";
+      return;
+    }
+    const { start_date, end_date } = salaries[0];
+    const { data, error } = await supabase
+      .from("credit_card_balance")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error) throw error;
+    const currentPeriodBalances = data.filter(
+      (item) =>
+        new Date(item.date) >= new Date(start_date) &&
+        new Date(item.date) <= new Date(end_date)
+    );
+    const totalBalance = currentPeriodBalances.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+    document.getElementById("currentCreditCard").textContent =
+      formatCurrency(totalBalance);
+    document.getElementById(
+      "creditCardPeriod"
+    ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
+      end_date
+    )}`;
+    const creditCardTableBody = document.getElementById("creditCardTableBody");
+    creditCardTableBody.innerHTML = "";
+    const itemsToShow = isShowingAllCreditCard ? data : data.slice(0, 5);
+    itemsToShow.forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${formatDate(item.date)}</td><td>${
+        item.description
+      }</td><td>${formatCurrency(
+        item.amount
+      )}</td><td><button class="btn btn-sm btn-outline-primary edit-credit-card-btn" data-id="${
+        item.id
+      }"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-credit-card-btn" data-id="${
+        item.id
+      }"><i class="bi bi-trash"></i></button></td>`;
+      creditCardTableBody.appendChild(row);
+    });
+    const toggleBtn = document.getElementById("toggleCreditCardBtn");
+    if (data.length > 5) {
+      toggleBtn.style.display = "inline-block";
+      toggleBtn.textContent = isShowingAllCreditCard ? "Show Less" : "Show All";
+    } else {
+      toggleBtn.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Error loading credit card balances:", error);
+    showToast("Gagal memuatkan data kad kredit", "error");
+  }
+}
+
+async function saveCreditCardBalance() {
+  const id = document.getElementById("creditCardId").value;
+  const date = document.getElementById("creditCardDate").value;
+  const description = document.getElementById("creditCardDescription").value;
+  const amount = parseFloat(document.getElementById("creditCardAmount").value);
+  const updateData = { date, description, amount };
+  try {
+    let error;
+    if (id) {
+      ({ error } = await supabase
+        .from("credit_card_balance")
+        .update(updateData)
+        .eq("id", id));
+    } else {
+      ({ error } = await supabase
+        .from("credit_card_balance")
+        .insert(updateData));
+    }
+    if (error) throw error;
+    showToast(`Rekod kad kredit berjaya ${id ? "dikemaskini" : "ditambah"}`);
+  } catch (error) {
+    console.error("Error saving credit card:", error);
+    showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
+  } finally {
+    creditCardModal.hide();
+    document.getElementById("creditCardForm").reset();
+    loadCreditCardBalances();
+  }
+}
+
+async function editCreditCardBalance(id) {
+  try {
+    const { data, error } = await supabase
+      .from("credit_card_balance")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    document.getElementById("creditCardId").value = data.id;
+    document.getElementById("creditCardDate").value = data.date;
+    document.getElementById("creditCardDescription").value = data.description;
+    document.getElementById("creditCardAmount").value = data.amount;
+    creditCardModal.show();
+  } catch (error) {
+    console.error("Error loading credit card:", error);
+    showToast("Gagal memuatkan rekod kad kredit", "error");
+  }
+}
+
+async function deleteCreditCardBalance(id) {
+  if (confirm("Adakah anda pasti ingin memadamkan rekod ini?")) {
+    try {
+      const { error } = await supabase
+        .from("credit_card_balance")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      showToast("Rekod kad kredit berjaya dipadam");
+      loadCreditCardBalances();
+    } catch (error) {
+      console.error("Error deleting credit card:", error);
+      showToast("Gagal memadam rekod kad kredit", "error");
+    }
+  }
+}
+
+// --- DEBIT CARD BALANCE FUNCTIONS ---
+async function loadDebitCardBalances() {
+  try {
+    const { data: salaries, error: salaryError } = await supabase
+      .from("salaries")
+      .select("start_date, end_date")
+      .order("month", { ascending: false })
+      .limit(1);
+    if (salaryError || !salaries || salaries.length === 0) {
+      document.getElementById("currentDebitCard").textContent =
+        formatCurrency(0);
+      document.getElementById("debitCardPeriod").textContent =
+        "Tempoh: Tiada data gaji.";
+      return;
+    }
+    const { start_date, end_date } = salaries[0];
+    const { data, error } = await supabase
+      .from("debit_card_balance")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error) throw error;
+    const currentPeriodBalances = data.filter(
+      (item) =>
+        new Date(item.date) >= new Date(start_date) &&
+        new Date(item.date) <= new Date(end_date)
+    );
+    const totalBalance = currentPeriodBalances.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+    document.getElementById("currentDebitCard").textContent =
+      formatCurrency(totalBalance);
+    document.getElementById(
+      "debitCardPeriod"
+    ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
+      end_date
+    )}`;
+    const debitCardTableBody = document.getElementById("debitCardTableBody");
+    debitCardTableBody.innerHTML = "";
+    const itemsToShow = isShowingAllDebitCard ? data : data.slice(0, 5);
+    itemsToShow.forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${formatDate(item.date)}</td><td>${
+        item.description
+      }</td><td>${formatCurrency(
+        item.amount
+      )}</td><td><button class="btn btn-sm btn-outline-primary edit-debit-card-btn" data-id="${
+        item.id
+      }"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-debit-card-btn" data-id="${
+        item.id
+      }"><i class="bi bi-trash"></i></button></td>`;
+      debitCardTableBody.appendChild(row);
+    });
+    const toggleBtn = document.getElementById("toggleDebitCardBtn");
+    if (data.length > 5) {
+      toggleBtn.style.display = "inline-block";
+      toggleBtn.textContent = isShowingAllDebitCard ? "Show Less" : "Show All";
+    } else {
+      toggleBtn.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Error loading debit card balances:", error);
+    showToast("Gagal memuatkan data kad debit", "error");
+  }
+}
+
+async function saveDebitCardBalance() {
+  const id = document.getElementById("debitCardId").value;
+  const date = document.getElementById("debitCardDate").value;
+  const description = document.getElementById("debitCardDescription").value;
+  const amount = parseFloat(document.getElementById("debitCardAmount").value);
+  const updateData = { date, description, amount };
+  try {
+    let error;
+    if (id) {
+      ({ error } = await supabase
+        .from("debit_card_balance")
+        .update(updateData)
+        .eq("id", id));
+    } else {
+      ({ error } = await supabase
+        .from("debit_card_balance")
+        .insert(updateData));
+    }
+    if (error) throw error;
+    showToast(`Rekod kad debit berjaya ${id ? "dikemaskini" : "ditambah"}`);
+  } catch (error) {
+    console.error("Error saving debit card:", error);
+    showToast(`Gagal menyimpan rekod: ${error.message}`, "error");
+  } finally {
+    debitCardModal.hide();
+    document.getElementById("debitCardForm").reset();
+    loadDebitCardBalances();
+  }
+}
+
+async function editDebitCardBalance(id) {
+  try {
+    const { data, error } = await supabase
+      .from("debit_card_balance")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    document.getElementById("debitCardId").value = data.id;
+    document.getElementById("debitCardDate").value = data.date;
+    document.getElementById("debitCardDescription").value = data.description;
+    document.getElementById("debitCardAmount").value = data.amount;
+    debitCardModal.show();
+  } catch (error) {
+    console.error("Error loading debit card:", error);
+    showToast("Gagal memuatkan rekod kad debit", "error");
+  }
+}
+
+async function deleteDebitCardBalance(id) {
+  if (confirm("Adakah anda pasti ingin memadamkan rekod ini?")) {
+    try {
+      const { error } = await supabase
+        .from("debit_card_balance")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      showToast("Rekod kad debit berjaya dipadam");
+      loadDebitCardBalances();
+    } catch (error) {
+      console.error("Error deleting debit card:", error);
+      showToast("Gagal memadam rekod kad debit", "error");
+    }
+  }
+}
+
 // --- EVENT LISTENERS (DELEGATION) ---
-salaryTableBody.addEventListener("click", (e) => {
+document.getElementById("salaryTableBody").addEventListener("click", (e) => {
   const editBtn = e.target.closest(".edit-salary-btn");
   const deleteBtn = e.target.closest(".delete-salary-btn");
   if (editBtn) editSalary(editBtn.dataset.id);
   if (deleteBtn) deleteSalary(deleteBtn.dataset.id);
 });
 
-expensesTableBody.addEventListener("click", (e) => {
+document.getElementById("expensesTableBody").addEventListener("click", (e) => {
   const editBtn = e.target.closest(".edit-expense-btn");
   const deleteBtn = e.target.closest(".delete-expense-btn");
   if (editBtn) editExpense(editBtn.dataset.id);
   if (deleteBtn) deleteExpense(deleteBtn.dataset.id);
 });
 
-subscriptionsTableBody.addEventListener("click", (e) => {
-  const editBtn = e.target.closest(".edit-subscription-btn");
-  const deleteBtn = e.target.closest(".delete-subscription-btn");
-  if (editBtn) editSubscription(editBtn.dataset.id);
-  if (deleteBtn) deleteSubscription(deleteBtn.dataset.id);
-});
+document
+  .getElementById("subscriptionsTableBody")
+  .addEventListener("click", (e) => {
+    const editBtn = e.target.closest(".edit-subscription-btn");
+    const deleteBtn = e.target.closest(".delete-subscription-btn");
+    if (editBtn) editSubscription(editBtn.dataset.id);
+    if (deleteBtn) deleteSubscription(deleteBtn.dataset.id);
+  });
 
-installmentsTableBody.addEventListener("click", (e) => {
-  const editBtn = e.target.closest(".edit-installment-btn");
-  const deleteBtn = e.target.closest(".delete-installment-btn");
-  if (editBtn) editInstallment(editBtn.dataset.id);
-  if (deleteBtn) deleteInstallment(deleteBtn.dataset.id);
+document
+  .getElementById("installmentsTableBody")
+  .addEventListener("click", (e) => {
+    const editBtn = e.target.closest(".edit-installment-btn");
+    const deleteBtn = e.target.closest(".delete-installment-btn");
+    if (editBtn) editInstallment(editBtn.dataset.id);
+    if (deleteBtn) deleteInstallment(deleteBtn.dataset.id);
+  });
+
+document
+  .getElementById("creditCardTableBody")
+  .addEventListener("click", (e) => {
+    const editBtn = e.target.closest(".edit-credit-card-btn");
+    const deleteBtn = e.target.closest(".delete-credit-card-btn");
+    if (editBtn) editCreditCardBalance(editBtn.dataset.id);
+    if (deleteBtn) deleteCreditCardBalance(deleteBtn.dataset.id);
+  });
+
+document.getElementById("debitCardTableBody").addEventListener("click", (e) => {
+  const editBtn = e.target.closest(".edit-debit-card-btn");
+  const deleteBtn = e.target.closest(".delete-debit-card-btn");
+  if (editBtn) editDebitCardBalance(editBtn.dataset.id);
+  if (deleteBtn) deleteDebitCardBalance(deleteBtn.dataset.id);
 });
 
 // --- OTHER EVENT LISTENERS ---
-editSalaryBtn.addEventListener("click", () =>
-  toggleDisplay(salaryDisplay, salaryEdit)
-);
-addSalaryBtn.addEventListener("click", () => {
+document
+  .getElementById("editSalaryBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("salaryDisplay"),
+      document.getElementById("salaryEdit")
+    )
+  );
+document.getElementById("addSalaryBtn").addEventListener("click", () => {
   document.getElementById("salaryId").value = "";
-  salaryForm.reset();
+  document.getElementById("salaryForm").reset();
   salaryModal.show();
 });
-saveSalaryBtn.addEventListener("click", saveSalary);
+document.getElementById("saveSalaryBtn").addEventListener("click", saveSalary);
 
-editExpensesBtn.addEventListener("click", () =>
-  toggleDisplay(expensesDisplay, expensesEdit)
-);
-addExpenseBtn.addEventListener("click", () => {
+document
+  .getElementById("editExpensesBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("expensesDisplay"),
+      document.getElementById("expensesEdit")
+    )
+  );
+document.getElementById("addExpenseBtn").addEventListener("click", () => {
   document.getElementById("expenseId").value = "";
-  expenseForm.reset();
+  document.getElementById("expenseForm").reset();
   expenseModal.show();
 });
-saveExpenseBtn.addEventListener("click", saveExpense);
-toggleExpensesBtn.addEventListener("click", () => {
+document
+  .getElementById("saveExpenseBtn")
+  .addEventListener("click", saveExpense);
+document.getElementById("toggleExpensesBtn").addEventListener("click", () => {
   isShowingAllExpenses = !isShowingAllExpenses;
   loadExpenses();
 });
 
-editSubscriptionsBtn.addEventListener("click", () =>
-  toggleDisplay(subscriptionsDisplay, subscriptionsEdit)
-);
-addSubscriptionBtn.addEventListener("click", () => {
+document
+  .getElementById("editSubscriptionsBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("subscriptionsDisplay"),
+      document.getElementById("subscriptionsEdit")
+    )
+  );
+document.getElementById("addSubscriptionBtn").addEventListener("click", () => {
   document.getElementById("subscriptionId").value = "";
-  subscriptionForm.reset();
+  document.getElementById("subscriptionForm").reset();
   subscriptionModal.show();
 });
-saveSubscriptionBtn.addEventListener("click", saveSubscription);
+document
+  .getElementById("saveSubscriptionBtn")
+  .addEventListener("click", saveSubscription);
+document
+  .getElementById("toggleSubscriptionsBtn")
+  .addEventListener("click", () => {
+    isShowingAllSubscriptions = !isShowingAllSubscriptions;
+    loadSubscriptions();
+  });
 
-editInstallmentsBtn.addEventListener("click", () =>
-  toggleDisplay(installmentsDisplay, installmentsEdit)
-);
-addInstallmentBtn.addEventListener("click", () => {
+document
+  .getElementById("editInstallmentsBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("installmentsDisplay"),
+      document.getElementById("installmentsEdit")
+    )
+  );
+document.getElementById("addInstallmentBtn").addEventListener("click", () => {
   document.getElementById("installmentId").value = "";
-  installmentForm.reset();
+  document.getElementById("installmentForm").reset();
   installmentModal.show();
 });
-saveInstallmentBtn.addEventListener("click", saveInstallment);
+document
+  .getElementById("saveInstallmentBtn")
+  .addEventListener("click", saveInstallment);
+document
+  .getElementById("toggleInstallmentsBtn")
+  .addEventListener("click", () => {
+    isShowingAllInstallments = !isShowingAllInstallments;
+    loadInstallments();
+  });
+
+document
+  .getElementById("editCreditCardBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("creditCardDisplay"),
+      document.getElementById("creditCardEdit")
+    )
+  );
+document.getElementById("addCreditCardBtn").addEventListener("click", () => {
+  document.getElementById("creditCardId").value = "";
+  document.getElementById("creditCardForm").reset();
+  creditCardModal.show();
+});
+document
+  .getElementById("saveCreditCardBtn")
+  .addEventListener("click", saveCreditCardBalance);
+document.getElementById("toggleCreditCardBtn").addEventListener("click", () => {
+  isShowingAllCreditCard = !isShowingAllCreditCard;
+  loadCreditCardBalances();
+});
+
+document
+  .getElementById("editDebitCardBtn")
+  .addEventListener("click", () =>
+    toggleDisplay(
+      document.getElementById("debitCardDisplay"),
+      document.getElementById("debitCardEdit")
+    )
+  );
+document.getElementById("addDebitCardBtn").addEventListener("click", () => {
+  document.getElementById("debitCardId").value = "";
+  document.getElementById("debitCardForm").reset();
+  debitCardModal.show();
+});
+document
+  .getElementById("saveDebitCardBtn")
+  .addEventListener("click", saveDebitCardBalance);
+document.getElementById("toggleDebitCardBtn").addEventListener("click", () => {
+  isShowingAllDebitCard = !isShowingAllDebitCard;
+  loadDebitCardBalances();
+});
 
 // --- INITIALIZE APP ---
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize Modals
+  salaryModal = new bootstrap.Modal(document.getElementById("salaryModal"));
+  expenseModal = new bootstrap.Modal(document.getElementById("expenseModal"));
+  subscriptionModal = new bootstrap.Modal(
+    document.getElementById("subscriptionModal")
+  );
+  installmentModal = new bootstrap.Modal(
+    document.getElementById("installmentModal")
+  );
+  creditCardModal = new bootstrap.Modal(
+    document.getElementById("creditCardModal")
+  );
+  debitCardModal = new bootstrap.Modal(
+    document.getElementById("debitCardModal")
+  );
+
+  // Initialize conditional fields for expense form
+  const expenseCategory = document.getElementById("expenseCategory");
+  const subscriptionFields = document.getElementById("subscriptionFields");
+  const installmentFields = document.getElementById("installmentFields");
+
+  expenseCategory.addEventListener("change", () => {
+    const category = expenseCategory.value;
+    subscriptionFields.classList.add("d-none");
+    installmentFields.classList.add("d-none");
+    if (category === "Subscription") {
+      subscriptionFields.classList.remove("d-none");
+    } else if (category === "Paylater/Installment") {
+      installmentFields.classList.remove("d-none");
+    }
+  });
+
+  // Load all data on startup
   loadSalaries();
   loadExpenses();
   loadSubscriptions();
   loadInstallments();
+  loadCreditCardBalances();
+  loadDebitCardBalances();
   loadMonthlyBalance();
 });
