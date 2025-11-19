@@ -258,19 +258,26 @@ async function loadExpenses() {
       : allExpenses.slice(0, 5);
     itemsToShow.forEach((expense) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${formatDate(expense.date)}</td><td>${
-        expense.description
-      }</td><td>${formatCurrency(
-        expense.amount
-      )}</td><td><span class="badge bg-${getCategoryBadgeColor(
-        expense.category
-      )}">${
-        expense.category
-      }</span></td><td><button class="btn btn-sm btn-outline-primary edit-expense-btn" data-id="${
-        expense.id
-      }"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger delete-expense-btn" data-id="${
-        expense.id
-      }"><i class="bi bi-trash"></i></button></td>`;
+      row.innerHTML = `
+                <td>${formatDate(expense.date)}</td>
+                <td>${expense.description}</td>
+                <td>${formatCurrency(expense.amount)}</td>
+                <td><span class="badge bg-${getCategoryBadgeColor(
+                  expense.category
+                )}">${expense.category}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary edit-expense-btn" data-id="${
+                      expense.id
+                    }">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger delete-expense-btn" data-id="${
+                      expense.id
+                    }">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
       expensesTableBody.appendChild(row);
     });
 
@@ -324,7 +331,6 @@ async function saveExpense() {
     updateData.end_date = document.getElementById("installmentEndDate").value;
   }
   try {
-    console.log("Saving expense with data:", updateData, "ID:", id);
     let error;
     if (id) {
       ({ error } = await supabase
@@ -345,6 +351,8 @@ async function saveExpense() {
     loadExpenses();
     loadSubscriptions();
     loadInstallments();
+    loadCreditCardBalances();
+    loadDebitCardBalances();
     loadMonthlyBalance();
   }
 }
@@ -391,6 +399,8 @@ async function deleteExpense(id) {
       loadExpenses();
       loadSubscriptions();
       loadInstallments();
+      loadCreditCardBalances();
+      loadDebitCardBalances();
       loadMonthlyBalance();
     } catch (error) {
       console.error("Error deleting expense:", error);
@@ -680,19 +690,21 @@ async function loadCreditCardBalances() {
       .order("month", { ascending: false })
       .limit(1);
     if (salaryError || !salaries || salaries.length === 0) {
-      document.getElementById("currentCreditCard").textContent =
-        formatCurrency(0);
+      document.getElementById("currentCreditCard").innerHTML =
+        "Jumlah Semasa: RM 0.00<br>Jumlah Keseluruhan: RM 0.00";
       document.getElementById("creditCardPeriod").textContent =
         "Tempoh: Tiada data gaji.";
+      document.getElementById("creditCardTableBody").innerHTML = "";
+      document.getElementById("toggleCreditCardBtn").style.display = "none";
       return;
     }
     const { start_date, end_date } = salaries[0];
-    const { data, error } = await supabase
+    const { data: allCreditCards, error } = await supabase
       .from("credit_card_balance")
       .select("*")
       .order("date", { ascending: false });
     if (error) throw error;
-    const currentPeriodBalances = data.filter(
+    const currentPeriodBalances = allCreditCards.filter(
       (item) =>
         new Date(item.date) >= new Date(start_date) &&
         new Date(item.date) <= new Date(end_date)
@@ -701,8 +713,13 @@ async function loadCreditCardBalances() {
       (sum, item) => sum + item.amount,
       0
     );
-    document.getElementById("currentCreditCard").textContent =
-      formatCurrency(totalBalance);
+    const grandTotalBalance = allCreditCards.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+    document.getElementById("currentCreditCard").innerHTML = `${formatCurrency(
+      grandTotalBalance
+    )}`;
     document.getElementById(
       "creditCardPeriod"
     ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
@@ -710,7 +727,9 @@ async function loadCreditCardBalances() {
     )}`;
     const creditCardTableBody = document.getElementById("creditCardTableBody");
     creditCardTableBody.innerHTML = "";
-    const itemsToShow = isShowingAllCreditCard ? data : data.slice(0, 5);
+    const itemsToShow = isShowingAllCreditCard
+      ? allCreditCards
+      : allCreditCards.slice(0, 5);
     itemsToShow.forEach((item) => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${formatDate(item.date)}</td><td>${
@@ -725,7 +744,7 @@ async function loadCreditCardBalances() {
       creditCardTableBody.appendChild(row);
     });
     const toggleBtn = document.getElementById("toggleCreditCardBtn");
-    if (data.length > 5) {
+    if (allCreditCards.length > 5) {
       toggleBtn.style.display = "inline-block";
       toggleBtn.textContent = isShowingAllCreditCard ? "Show Less" : "Show All";
     } else {
@@ -812,19 +831,21 @@ async function loadDebitCardBalances() {
       .order("month", { ascending: false })
       .limit(1);
     if (salaryError || !salaries || salaries.length === 0) {
-      document.getElementById("currentDebitCard").textContent =
-        formatCurrency(0);
+      document.getElementById("currentDebitCard").innerHTML =
+        "Jumlah Semasa: RM 0.00<br>Jumlah Keseluruhan: RM 0.00";
       document.getElementById("debitCardPeriod").textContent =
         "Tempoh: Tiada data gaji.";
+      document.getElementById("debitCardTableBody").innerHTML = "";
+      document.getElementById("toggleDebitCardBtn").style.display = "none";
       return;
     }
     const { start_date, end_date } = salaries[0];
-    const { data, error } = await supabase
+    const { data: allDebitCards, error } = await supabase
       .from("debit_card_balance")
       .select("*")
       .order("date", { ascending: false });
     if (error) throw error;
-    const currentPeriodBalances = data.filter(
+    const currentPeriodBalances = allDebitCards.filter(
       (item) =>
         new Date(item.date) >= new Date(start_date) &&
         new Date(item.date) <= new Date(end_date)
@@ -833,8 +854,13 @@ async function loadDebitCardBalances() {
       (sum, item) => sum + item.amount,
       0
     );
-    document.getElementById("currentDebitCard").textContent =
-      formatCurrency(totalBalance);
+    const grandTotalBalance = allDebitCards.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+    document.getElementById("currentDebitCard").innerHTML = `${formatCurrency(
+      grandTotalBalance
+    )}`;
     document.getElementById(
       "debitCardPeriod"
     ).textContent = `Tempoh: ${formatDate(start_date)} - ${formatDate(
@@ -842,7 +868,9 @@ async function loadDebitCardBalances() {
     )}`;
     const debitCardTableBody = document.getElementById("debitCardTableBody");
     debitCardTableBody.innerHTML = "";
-    const itemsToShow = isShowingAllDebitCard ? data : data.slice(0, 5);
+    const itemsToShow = isShowingAllDebitCard
+      ? allDebitCards
+      : allDebitCards.slice(0, 5);
     itemsToShow.forEach((item) => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${formatDate(item.date)}</td><td>${
@@ -857,7 +885,7 @@ async function loadDebitCardBalances() {
       debitCardTableBody.appendChild(row);
     });
     const toggleBtn = document.getElementById("toggleDebitCardBtn");
-    if (data.length > 5) {
+    if (allDebitCards.length > 5) {
       toggleBtn.style.display = "inline-block";
       toggleBtn.textContent = isShowingAllDebitCard ? "Show Less" : "Show All";
     } else {
